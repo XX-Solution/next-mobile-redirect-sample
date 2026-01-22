@@ -1,12 +1,20 @@
 # Next.js sample: redirect mobile users to a mobile domain (with exceptions)
 
-This is a minimal **App Router** Next.js project (JavaScript, no TypeScript) that demonstrates:
+This is a minimal **App Router** Next.js project (JavaScript, no TypeScript) that demonstrates a
+**"real mobile only"** redirect to a separate mobile domain.
 
-- `middleware.js` redirecting **mobile** User-Agents to a **mobile domain**
-- **NOT** redirecting if:
-  - `device-memory` Client Hint is **> 10 GB** (when available)
-  - a cookie `prefer_desktop=1` is set (manual toggle or client-side GPU check)
-  - the request looks like **desktop DevTools device emulation / UA override** (mobile UA but desktop Client Hints)
+Why not a pure middleware redirect?
+
+- On the server you only reliably have **User-Agent** and a few optional **Client Hints**.
+- In DevTools device emulation, Chrome can spoof those — so "UA-based redirect" will also
+  redirect your desktop browser.
+
+So this sample uses a **client-side redirect** (best-effort) that checks UA-CH *high entropy* values
+(`platform`, `wow64`, `architecture`) when available and avoids redirecting desktops in emulation.
+
+Middleware is still used for:
+- manual toggles `?desktop=1` / `?mobile=1`
+- avoiding loops if you deploy the same app on the mobile host too
 
 ## 1) Install & run
 
@@ -20,11 +28,12 @@ npm run dev
 Copy `.env.example` to `.env.local` and set your domains:
 
 ```bash
-DESKTOP_HOST=example.com
 MOBILE_HOST=m.example.com
+NEXT_PUBLIC_MOBILE_URL=https://m.example.com
 ```
 
-> Note: In dev on `localhost` the middleware redirect is disabled by default.
+> Note: In dev on `localhost` the redirect will still work (because it's client-side),
+> but you need a real mobile device to see it happen.
 
 ## 3) Manual toggles
 
@@ -34,7 +43,15 @@ MOBILE_HOST=m.example.com
 ## 4) About GPU / RAM detection
 
 - Middleware **cannot** reliably detect GPU.
-- `device-memory` header is **not** sent by all browsers (e.g. iOS Safari).
 - Client component `app/components/PreferDesktopGate.js` checks `navigator.deviceMemory` and WebGL renderer and pins desktop by cookie.
+
+## 5) The actual mobile redirect logic
+
+See `app/components/RealMobileRedirect.js`.
+
+Rules:
+- redirects only when the browser looks like a *real* phone/tablet
+- does NOT redirect when UA-CH indicates desktop (`platform=Windows`, `wow64=true`, `architecture=x86`, etc.)
+- does NOT redirect when `navigator.deviceMemory > 10`
 
 Adjust heuristics for your needs.
