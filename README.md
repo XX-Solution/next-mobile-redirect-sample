@@ -12,7 +12,7 @@ Next.js (App Router), JavaScript без TypeScript. **Без middleware** — р
    - GPU выглядит как «десктопная» (по WebGL renderer; эвристика)
 3) Браузер — **YandexBrowserCorp** (`YaBrowser / YandexBrowser / YandexBrowserCorp`)
 
-Иначе — редирект на `NEXT_PUBLIC_MOBILE_ORIGIN`.
+Иначе — редирект на `NEXT_PUBLIC_API_URL`.
 
 ## Ручные переключатели
 - `?desktop=1` — закрепить ПК (cookie `prefer_desktop=1`)
@@ -29,6 +29,6 @@ NEXT_PUBLIC_REDIRECT_DEBUG=1
 ```bash
 npm i
 cp .env.example .env.local
-# в .env.local укажи NEXT_PUBLIC_MOBILE_ORIGIN
+# в .env.local укажи NEXT_PUBLIC_API_URL
 npm run dev
 ```

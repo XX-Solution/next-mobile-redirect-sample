@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const MOBILE_ORIGIN = process.env.NEXT_PUBLIC_MOBILE_ORIGIN;
+const MOBILE_ORIGIN = process.env.NEXT_PUBLIC_API_URL;
 const DEBUG = process.env.NEXT_PUBLIC_REDIRECT_DEBUG === '1';
 
 // --- helpers ---
@@ -211,7 +211,7 @@ export default function DomainRedirectGate() {
 
     // --- env check ---
     if (!MOBILE_ORIGIN) {
-      reasons.push('MOBILE_ORIGIN not set (NEXT_PUBLIC_MOBILE_ORIGIN)');
+      reasons.push('MOBILE_ORIGIN not set (NEXT_PUBLIC_API_URL)');
       keepDesktopAndDone();
       return;
     }
