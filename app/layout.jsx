@@ -19,7 +19,7 @@ export default function RootLayout({ children }) {
             "radial-gradient(1200px 700px at 20% 10%, rgba(56,189,248,.18), transparent 60%), radial-gradient(1000px 600px at 80% 0%, rgba(99,102,241,.16), transparent 55%), #ffffff",
         }}
       >
-        <DomainRedirectGate />
+        {/* <DomainRedirectGate /> */}
 
         <div
           style={{
