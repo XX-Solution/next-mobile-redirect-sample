@@ -10,9 +10,6 @@ export default function DomainViewSwitch() {
   // Пока идёт проверка, ничего не рендерим (оверлей покажет Provider)
   if (checking) return null;
 
-  // ВАЖНО:
-  // view === 'seo' => показываем MainBlockSeo
-  // view === 'white' => показываем White
   return view === "seo" ? (
     <MainBlockSeo
       title={"Скидка до −50% 🔥\n + кэшбэк 5%"}
