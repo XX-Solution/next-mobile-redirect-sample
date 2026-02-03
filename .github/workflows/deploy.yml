@@ -94,5 +94,5 @@ jobs:
           fi
           curl -H "Title: Deploy Failed - $BRANCH" \
                -H "Priority: urgent" \
-               -d "Deployment to $BRANCH branch failed. Check  GitHub Actions logs for details..." \
+               -d "Deployment to $BRANCH branch failed. Check! GitHub Actions logs for details..." \
                "https://ntfy.sh/${{ secrets.NTFY_ERROR_TOPIC }}"
