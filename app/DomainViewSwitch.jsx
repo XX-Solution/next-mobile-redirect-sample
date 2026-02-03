@@ -16,8 +16,6 @@ export default function DomainViewSwitch() {
     <White />
   );
 }
-
-
 // "use client";
 
 // import MainBlockSeo from "./ui/MainBlockSeo/MainBlockSeo";
