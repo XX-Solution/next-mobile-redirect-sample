@@ -8,7 +8,107 @@ import HeaderSocial from "../Header/components/HeaderSocial/HeaderSocial";
 
 const YM_ID = 106415263;
 
-// ждём ym, чтобы не терять цели при ранних кликах
+// ---------- analytics helpers (inline) ----------
+function getCookie(name) {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(new RegExp("(^|; )" + name + "=([^;]*)"));
+  return m ? decodeURIComponent(m[2]) : null;
+}
+
+function safeJsonParse(str) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}
+
+function buildAnalyticsFromWindow() {
+  if (typeof window === "undefined") return null;
+
+  const url = new URL(window.location.href);
+  const sp = url.searchParams;
+
+  const analytics = {};
+  const keys = [
+    "yclid",
+    "gclid",
+    "fbclid",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "utm_text",
+  ];
+
+  for (const k of keys) {
+    const v = sp.get(k);
+    if (v != null && String(v).trim() !== "") analytics[k] = v;
+  }
+
+  analytics.original_query = url.search || "";
+  analytics.referrer = document.referrer || null;
+  analytics.ym_uid = getCookie("_ym_uid");
+
+  return analytics;
+}
+
+/**
+ * localStorage utm_data:
+ * - landing_page и visit_timestamp фиксируются только 1 раз (первый заход)
+ * - UTM/yclid обновляются, если пришли в текущем URL
+ */
+function initAndGetAnalyticsStorage() {
+  if (typeof window === "undefined") return null;
+
+  const nowIso = new Date().toISOString();
+  const current = buildAnalyticsFromWindow();
+
+  const raw = localStorage.getItem("utm_data");
+  const stored = raw ? safeJsonParse(raw) : null;
+
+  const next = { ...(stored || {}) };
+
+  // фиксируем только при первом заходе
+  if (!next.visit_timestamp) next.visit_timestamp = nowIso;
+  if (!next.landing_page) {
+    // первый URL захода (с querystring). Если нужно без query — см. комментарий ниже.
+    next.landing_page = window.location.href.split("#")[0];
+    // без query:
+    // next.landing_page = window.location.origin + window.location.pathname;
+  }
+
+  if (current) {
+    // можно обновлять всегда
+    next.referrer = current.referrer ?? next.referrer ?? null;
+    next.original_query = current.original_query ?? next.original_query ?? "";
+
+    const updatableKeys = [
+      "yclid",
+      "gclid",
+      "fbclid",
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_content",
+      "utm_term",
+      "utm_text",
+      "ym_uid",
+    ];
+
+    for (const k of updatableKeys) {
+      if (current[k] != null && String(current[k]).trim() !== "") {
+        next[k] = current[k];
+      }
+    }
+  }
+
+  localStorage.setItem("utm_data", JSON.stringify(next));
+  return next;
+}
+
+// ---------- ym helpers ----------
 function waitForYm(timeoutMs = 1500) {
   return new Promise((resolve) => {
     if (typeof window === "undefined") return resolve(false);
@@ -31,7 +131,6 @@ async function reachGoal(goalName, params) {
     const ok = await waitForYm();
     if (!ok || typeof window.ym !== "function") return false;
 
-    // goalName = 'tel_input' | 'open_form_click' | 'form_submit' ...
     window.ym(YM_ID, "reachGoal", goalName, params || {});
     return true;
   } catch {
@@ -44,7 +143,7 @@ export default function PhoneRequestForm({ buttonText, vuz }) {
   const [isInvalid, setIsInvalid] = useState(false);
 
   const [page, setPage] = useState("");
-  const [utm, setUtm] = useState(null);
+  const [utm, setUtm] = useState(null); // тут лежит analytics объект из localStorage
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSent, setIsSent] = useState(false);
@@ -56,27 +155,24 @@ export default function PhoneRequestForm({ buttonText, vuz }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // если хочешь именно текущий url, а не origin:
-    // setPage(window.location.href);
     setPage(window.location.href);
 
     try {
-      const raw = localStorage.getItem("utm_data");
-      if (raw) setUtm(JSON.parse(raw));
+      const a = initAndGetAnalyticsStorage();
+      setUtm(a);
     } catch (e) {
-      console.error("Ошибка чтения utm_data из localStorage", e);
+      console.error("Ошибка инициализации analytics", e);
     }
   }, []);
 
   const validatePhone = useCallback((value) => {
-    // value типа "79991234567" или "+7..." — чистим до цифр
     return String(value || "").replace(/\D/g, "").length >= 11;
   }, []);
 
   const handleBtnClick = useCallback(async () => {
     if (isSubmitting) return;
 
-    // ✅ Нажал кнопку “Получить помощь”
+    // ✅ Нажал кнопку
     reachGoal("open_form_click");
 
     if (!phone.trim() || !validatePhone(phone)) {
@@ -92,9 +188,20 @@ export default function PhoneRequestForm({ buttonText, vuz }) {
       phone,
       page,
       vuz: vuz || null,
-      utm_source: utm?.utm_source || null,
-      utm_medium: utm?.utm_medium || null,
-      utm_campaign: utm?.utm_campaign || null,
+      analytics: {
+        yclid: utm?.yclid || null,
+        utm_source: utm?.utm_source || null,
+        utm_medium: utm?.utm_medium || null,
+        utm_campaign: utm?.utm_campaign || null,
+        utm_content: utm?.utm_content || null,
+        utm_term: utm?.utm_term || null,
+        utm_text: utm?.utm_text || null,
+        original_query: utm?.original_query || "",
+        referrer: utm?.referrer || null,
+        landing_page: utm?.landing_page || null,
+        ym_uid: utm?.ym_uid || null,
+        visit_timestamp: utm?.visit_timestamp || null,
+      },
     };
 
     try {
@@ -120,10 +227,9 @@ export default function PhoneRequestForm({ buttonText, vuz }) {
       // ✅ Отправил форму
       reachGoal("form_submit");
 
-      // успех
       setIsSent(true);
       setPhone("");
-      telSent.current = false; // чтобы при новом заполнении снова отработал tel_input
+      telSent.current = false;
     } catch (e) {
       setSubmitError(e?.message || "Ошибка отправки. Попробуйте ещё раз.");
     } finally {
@@ -176,14 +282,11 @@ export default function PhoneRequestForm({ buttonText, vuz }) {
               setIsInvalid(false);
               setSubmitError("");
 
-              // ✅ Заполнил номер телефона (один раз, когда номер стал валидным)
               const ok = validatePhone(value);
               if (ok && !telSent.current) {
                 telSent.current = true;
                 reachGoal("tel_input");
               }
-
-              // если снова стал невалидным — разрешаем стрельнуть ещё раз при следующей валидности
               if (!ok) telSent.current = false;
             }}
             inputClass={`${styles.phoneInput} ${
